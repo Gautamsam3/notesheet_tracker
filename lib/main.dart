@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
+import 'package:notesheet_tracker/pages/hod.dart';
+import 'package:notesheet_tracker/pages/reviewer.dart';
 
 void main() {
   runApp(MyApp());
@@ -12,7 +13,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Document Review Dashboard',
+      title: 'Student Submission Page',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -93,7 +94,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    // Here you would typically send the data to your backend
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -123,22 +123,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  void _navigateTo(String page) {
+    if (page == 'HOD') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => HodDashboard()),
+      );
+    } else if (page == 'Reviewer') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ReviewerPage()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('Document Review Dashboard'),
+        title: Text('Student Submission Page'),
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: _navigateTo,
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'HOD',
+                child: Text('HOD Review Page'),
+              ),
+              PopupMenuItem<String>(
+                value: 'Reviewer',
+                child: Text('Reviewer Review Page'),
+              ),
+            ],
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Stats
             Row(
               children: [
                 Expanded(
@@ -169,10 +197,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
-
             SizedBox(height: 24),
-
-            // Submit New Document Section
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -192,17 +217,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     SizedBox(height: 20),
-
-                    // File Upload Section
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.grey[300]!,
-                          style: BorderStyle.solid,
-                          width: 2,
-                        ),
+                        border: Border.all(color: Colors.grey[300]!, width: 2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Column(
@@ -245,10 +264,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                     ),
-
                     SizedBox(height: 20),
-
-                    // Reviewer Selection
                     Text(
                       'Select Reviewer',
                       style: TextStyle(
@@ -284,10 +300,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                     ),
-
                     SizedBox(height: 20),
-
-                    // Notes Section
                     Text(
                       'Additional Notes (Optional)',
                       style: TextStyle(
@@ -311,10 +324,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                     ),
-
                     SizedBox(height: 24),
-
-                    // Submit Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -340,10 +350,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
-
             SizedBox(height: 24),
-
-            // Recent Submissions Section
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -383,23 +390,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             subtitle: Text(
                               'Reviewer: ${submission['reviewer']}\nDate: ${submission['date']}',
                             ),
-                            trailing: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: submission['statusColor'],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                submission['status'],
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: submission['statusColor'],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    submission['status'],
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                IconButton(
+                                  icon: Icon(Icons.download),
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Downloading ${submission['document']}',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                             isThreeLine: true,
                           ),
@@ -416,22 +440,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 32,
-            ),
+            Icon(icon, color: color, size: 32),
             SizedBox(height: 8),
             Text(
               value,
@@ -444,10 +467,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             SizedBox(height: 4),
             Text(
               title,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ],
         ),
