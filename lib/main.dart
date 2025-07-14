@@ -1,30 +1,78 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
+import 'package:intl/intl.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  void _toggleTheme() {
+    setState(() {
+      _themeMode = _themeMode == ThemeMode.dark
+          ? ThemeMode.light
+          : ThemeMode.dark;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Document Review Dashboard',
+      debugShowCheckedModeBanner: false,
+
       theme: ThemeData(
+        brightness: Brightness.light,
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: DashboardScreen(),
-      debugShowCheckedModeBanner: false,
+
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        cardColor: const Color(0xFF1E1E1E),
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.blue[800],
+          foregroundColor: Colors.white,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ButtonStyle(
+            backgroundColor: WidgetStateProperty.all(Colors.blue[700]),
+            foregroundColor: WidgetStateProperty.all(Colors.white),
+          ),
+        ),
+      ),
+
+      themeMode: _themeMode,
+
+      home: DashboardScreen(
+        isDarkMode: _themeMode == ThemeMode.dark,
+        onToggleDarkMode: _toggleTheme,
+      ),
     );
   }
 }
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final bool isDarkMode;
+  final VoidCallback onToggleDarkMode;
+
+  const DashboardScreen({
+    super.key,
+    required this.isDarkMode,
+    required this.onToggleDarkMode,
+  });
 
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
@@ -85,28 +133,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _submitDocument() {
     if (selectedFileName == null || selectedReviewer == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please select a document and reviewer'),
+        const SnackBar(
+          content: Text('Please select a document and a reviewer.'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    // Here you would typically send the data to your backend
+    setState(() {
+      recentSubmissions.insert(0, {
+        'document': selectedFileName!,
+        'reviewer': selectedReviewer!.split(' - ')[0],
+        'status': 'Under Review',
+        'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'statusColor': Colors.orange,
+      });
+    });
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Success'),
-          content: Text('Document submitted successfully for review!'),
+          title: const Text('Success'),
+          content: const Text('Document submitted successfully for review!'),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 _resetForm();
               },
-              child: Text('OK'),
+              child: const Text('OK'),
             ),
           ],
         );
@@ -125,329 +182,156 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Use Theme.of(context) to get current theme colors
+    final theme = Theme.of(context);
+    final cardColor = theme.cardColor;
+    final textColor = theme.textTheme.bodyLarge?.color;
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      // The scaffold background color is now handled by the theme
       appBar: AppBar(
-        title: Text('Document Review Dashboard'),
-        backgroundColor: Colors.blue[600],
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('Document Review Dashboard'),
+        // AppBar colors are now handled by the theme
+        elevation: 1,
+        actions: [
+          IconButton(
+            icon: Icon(widget.isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            onPressed: widget.onToggleDarkMode,
+            tooltip: widget.isDarkMode
+                ? 'Switch to Light Mode'
+                : 'Switch to Dark Mode',
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Stats
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    'Total Submissions',
-                    '24',
-                    Icons.description,
-                    Colors.blue,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatCard(
-                    'Pending Reviews',
-                    '8',
-                    Icons.pending_actions,
-                    Colors.orange,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatCard(
-                    'Approved',
-                    '16',
-                    Icons.check_circle,
-                    Colors.green,
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 24),
-
-            // Submit New Document Section
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
-                padding: EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
                       'Submit New Document',
-                      style: TextStyle(
-                        fontSize: 20,
+                      style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
                       ),
                     ),
-                    SizedBox(height: 20),
-
-                    // File Upload Section
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.grey[300]!,
-                          style: BorderStyle.solid,
-                          width: 2,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.cloud_upload,
-                            size: 48,
-                            color: Colors.blue[400],
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            selectedFileName ?? 'No file selected',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: selectedFileName != null
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: selectedFileName != null
-                                  ? Colors.green[600]
-                                  : Colors.grey[600],
-                            ),
-                          ),
-                          SizedBox(height: 12),
-                          ElevatedButton.icon(
-                            onPressed: _pickFile,
-                            icon: Icon(Icons.attach_file),
-                            label: Text('Choose File'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[600],
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.attach_file),
+                      label: const Text('Select Document'),
+                      onPressed: _pickFile,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
-
-                    SizedBox(height: 20),
-
-                    // Reviewer Selection
-                    Text(
-                      'Select Reviewer',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: selectedReviewer,
-                          hint: Text('Choose a reviewer'),
-                          isExpanded: true,
-                          items: reviewers.map((String reviewer) {
-                            return DropdownMenuItem<String>(
-                              value: reviewer,
-                              child: Text(reviewer),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              selectedReviewer = newValue;
-                            });
-                          },
+                    if (selectedFileName != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12.0),
+                        child: Chip(
+                          label: Text(
+                            selectedFileName!,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onDeleted: () =>
+                              setState(() => selectedFileName = null),
+                          avatar: const Icon(Icons.insert_drive_file),
+                          backgroundColor: theme.primaryColor.withOpacity(0.1),
                         ),
                       ),
-                    ),
-
-                    SizedBox(height: 20),
-
-                    // Notes Section
-                    Text(
-                      'Additional Notes (Optional)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedReviewer,
+                      onChanged: (newValue) {
+                        setState(() => selectedReviewer = newValue);
+                      },
+                      items: reviewers.map((reviewer) {
+                        return DropdownMenuItem(
+                          value: reviewer,
+                          child: Text(reviewer),
+                        );
+                      }).toList(),
+                      decoration: const InputDecoration(
+                        labelText: 'Assign Reviewer',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person_search),
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 16),
                     TextField(
                       controller: _notesController,
+                      decoration: const InputDecoration(
+                        labelText: 'Additional Notes (Optional)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.notes),
+                      ),
                       maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: 'Add any additional notes or instructions...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.blue[600]!),
-                        ),
-                      ),
                     ),
-
-                    SizedBox(height: 24),
-
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _submitDocument,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          'Submit for Review',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.send),
+                      label: const Text('Submit for Review'),
+                      onPressed: _submitDocument,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        textStyle: const TextStyle(fontSize: 16),
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-
-            SizedBox(height: 24),
-
-            // Recent Submissions Section
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Recent Submissions',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemCount: recentSubmissions.length,
-                      itemBuilder: (context, index) {
-                        final submission = recentSubmissions[index];
-                        return Card(
-                          margin: EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.description,
-                              color: Colors.blue[600],
-                            ),
-                            title: Text(
-                              submission['document'],
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            subtitle: Text(
-                              'Reviewer: ${submission['reviewer']}\nDate: ${submission['date']}',
-                            ),
-                            trailing: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: submission['statusColor'],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                submission['status'],
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            isThreeLine: true,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              icon,
-              color: color,
-              size: 32,
-            ),
-            SizedBox(height: 8),
+            const SizedBox(height: 24),
             Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
+              'Recent Submissions',
+              style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
               ),
             ),
-            SizedBox(height: 4),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+            const SizedBox(height: 16),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: recentSubmissions.length,
+              itemBuilder: (context, index) {
+                final item = recentSubmissions[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  elevation: 2,
+                  child: ListTile(
+                    leading: const Icon(Icons.description, size: 30),
+                    title: Text(
+                      item['document'],
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      'To: ${item['reviewer']} on ${item['date']}',
+                      style: TextStyle(color: textColor?.withOpacity(0.7)),
+                    ),
+                    trailing: Chip(
+                      label: Text(
+                        item['status'],
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: item['statusColor'],
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
