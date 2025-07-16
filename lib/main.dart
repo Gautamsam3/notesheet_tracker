@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'dart:io';
+import 'package:intl/intl.dart';
 
 void main() {
   runApp(MyApp());
@@ -31,10 +30,55 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  String? selectedFileName;
-  String? selectedFilePath;
-  String? selectedReviewer;
-  final TextEditingController _notesController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _eventTitleController = TextEditingController();
+  final TextEditingController _organizerNameController =
+      TextEditingController();
+  final TextEditingController _organizerContactController =
+      TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _venueController = TextEditingController();
+  final TextEditingController _budgetController = TextEditingController();
+  final TextEditingController _additionalNotesController =
+      TextEditingController();
+  final TextEditingController _otherResourcesController =
+      TextEditingController();
+
+  DateTime? _selectedDate;
+  TimeOfDay? _startTime;
+  TimeOfDay? _endTime;
+  String? _modeOfEvent;
+  String? _typeOfEvent;
+  String? _audienceType;
+  String? _fundSource;
+  bool _agreedToTerms = false;
+
+  List<String> selectedResources = [];
+  final List<String> resourceOptions = [
+    'Projector',
+    'Mic/Speakers',
+    'Food/Refreshments',
+    'Certificates',
+    'Stationery',
+    'Volunteers',
+  ];
+
+  final List<String> modeOptions = ['Offline', 'Online', 'Hybrid'];
+  final List<String> typeOptions = [
+    'Workshop',
+    'Seminar',
+    'Competition',
+    'Cultural',
+    'Sports',
+    'Other',
+  ];
+  final List<String> audienceOptions = ['Internal', 'External', 'Both'];
+  final List<String> fundSourceOptions = [
+    'College',
+    'Sponsor',
+    'Club Budget',
+    'Self-Funded',
+  ];
 
   final List<String> reviewers = [
     'John Smith - Senior Manager',
@@ -46,21 +90,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   final List<Map<String, dynamic>> recentSubmissions = [
     {
-      'document': 'Project_Proposal.pdf',
+      'document': 'Annual Conference Proposal',
       'reviewer': 'John Smith',
       'status': 'Under Review',
       'date': '2024-01-15',
       'statusColor': Colors.orange,
     },
     {
-      'document': 'Budget_Report.xlsx',
+      'document': 'Hackathon Event Plan',
       'reviewer': 'Sarah Johnson',
       'status': 'Approved',
       'date': '2024-01-14',
       'statusColor': Colors.green,
     },
     {
-      'document': 'Technical_Specs.docx',
+      'document': 'Cultural Fest Budget',
       'reviewer': 'Mike Davis',
       'status': 'Needs Revision',
       'date': '2024-01-13',
@@ -68,58 +112,95 @@ class _DashboardScreenState extends State<DashboardScreen> {
     },
   ];
 
-  Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'xlsx', 'pptx'],
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(DateTime.now().year + 1),
     );
-
-    if (result != null) {
+    if (picked != null && picked != _selectedDate) {
       setState(() {
-        selectedFileName = result.files.single.name;
-        selectedFilePath = result.files.single.path;
+        _selectedDate = picked;
       });
     }
   }
 
-  void _submitDocument() {
-    if (selectedFileName == null || selectedReviewer == null) {
+  Future<void> _selectStartTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null && picked != _startTime) {
+      setState(() {
+        _startTime = picked;
+      });
+    }
+  }
+
+  Future<void> _selectEndTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null && picked != _endTime) {
+      setState(() {
+        _endTime = picked;
+      });
+    }
+  }
+
+  void _submitForm() {
+    if (_formKey.currentState!.validate() && _agreedToTerms) {
+      // Here you would typically send the data to your backend
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Success'),
+            content: Text('Event submitted successfully for review!'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _resetForm();
+                },
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    } else if (!_agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please select a document and reviewer'),
+          content: Text('Please agree to the terms and conditions'),
           backgroundColor: Colors.red,
         ),
       );
-      return;
     }
-
-    // Here you would typically send the data to your backend
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Success'),
-          content: Text('Document submitted successfully for review!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _resetForm();
-              },
-              child: Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _resetForm() {
+    _formKey.currentState?.reset();
     setState(() {
-      selectedFileName = null;
-      selectedFilePath = null;
-      selectedReviewer = null;
-      _notesController.clear();
+      _eventTitleController.clear();
+      _organizerNameController.clear();
+      _organizerContactController.clear();
+      _descriptionController.clear();
+      _venueController.clear();
+      _budgetController.clear();
+      _additionalNotesController.clear();
+      _otherResourcesController.clear();
+      _selectedDate = null;
+      _startTime = null;
+      _endTime = null;
+      _modeOfEvent = null;
+      _typeOfEvent = null;
+      _audienceType = null;
+      _fundSource = null;
+      selectedResources.clear();
+      _agreedToTerms = false;
     });
   }
 
@@ -128,7 +209,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('Document Review Dashboard'),
+        title: Text('Event Review Dashboard'),
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
         elevation: 0,
@@ -172,7 +253,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             SizedBox(height: 24),
 
-            // Submit New Document Section
+            // Submit New Event Section
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -180,163 +261,256 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               child: Padding(
                 padding: EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Submit New Document',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                    SizedBox(height: 20),
-
-                    // File Upload Section
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.grey[300]!,
-                          style: BorderStyle.solid,
-                          width: 2,
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Submit New Event',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
                         ),
-                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Column(
+                      SizedBox(height: 20),
+
+                      // Basic Event Info Section
+                      _buildTextField(
+                        controller: _eventTitleController,
+                        label: 'Event Title',
+                        hint: 'e.g., Coding Bootcamp 2025',
+                        validator: (value) =>
+                            value!.isEmpty ? 'Required field' : null,
+                      ),
+                      _buildTextField(
+                        controller: _organizerNameController,
+                        label: 'Organizer Name',
+                        hint: 'Name of person/team requesting the event',
+                        validator: (value) =>
+                            value!.isEmpty ? 'Required field' : null,
+                      ),
+                      _buildTextField(
+                        controller: _organizerContactController,
+                        label: 'Organizer Contact Info',
+                        hint: 'Email or phone number for contact',
+                        validator: (value) =>
+                            value!.isEmpty ? 'Required field' : null,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+
+                      // Date and Time Pickers
+                      Row(
                         children: [
-                          Icon(
-                            Icons.cloud_upload,
-                            size: 48,
-                            color: Colors.blue[400],
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            selectedFileName ?? 'No file selected',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: selectedFileName != null
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: selectedFileName != null
-                                  ? Colors.green[600]
-                                  : Colors.grey[600],
+                          Expanded(
+                            child: _buildDatePickerField(
+                              label: 'Date of Event',
+                              selectedDate: _selectedDate,
+                              onTap: () => _selectDate(context),
                             ),
                           ),
-                          SizedBox(height: 12),
-                          ElevatedButton.icon(
-                            onPressed: _pickFile,
-                            icon: Icon(Icons.attach_file),
-                            label: Text('Choose File'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[600],
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: _buildTimePickerField(
+                              label: 'Start Time',
+                              selectedTime: _startTime,
+                              onTap: () => _selectStartTime(context),
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: _buildTimePickerField(
+                              label: 'End Time',
+                              selectedTime: _endTime,
+                              onTap: () => _selectEndTime(context),
                             ),
                           ),
                         ],
                       ),
-                    ),
+                      SizedBox(height: 16),
 
-                    SizedBox(height: 20),
+                      // Mode and Type Dropdowns
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildDropdown(
+                              label: 'Mode of Event',
+                              value: _modeOfEvent,
+                              items: modeOptions,
+                              onChanged: (value) {
+                                setState(() {
+                                  _modeOfEvent = value;
+                                });
+                              },
+                              validator: (value) =>
+                                  value == null ? 'Required field' : null,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: _buildDropdown(
+                              label: 'Type of Event',
+                              value: _typeOfEvent,
+                              items: typeOptions,
+                              onChanged: (value) {
+                                setState(() {
+                                  _typeOfEvent = value;
+                                });
+                              },
+                              validator: (value) =>
+                                  value == null ? 'Required field' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16),
 
-                    // Reviewer Selection
-                    Text(
-                      'Select Reviewer',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
+                      _buildTextField(
+                        controller: _descriptionController,
+                        label: 'Description / Objective',
+                        hint: 'What the event is about and why it\'s important',
+                        maxLines: 4,
+                        validator: (value) =>
+                            value!.isEmpty ? 'Required field' : null,
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(8),
+
+                      // Venue & Logistics Section
+                      _buildSectionHeader('🏛️ Venue & Logistics'),
+                      _buildTextField(
+                        controller: _venueController,
+                        label: 'Proposed Venue / Platform',
+                        hint: 'Physical venue or virtual platform',
+                        validator: (value) =>
+                            value!.isEmpty ? 'Required field' : null,
                       ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: selectedReviewer,
-                          hint: Text('Choose a reviewer'),
-                          isExpanded: true,
-                          items: reviewers.map((String reviewer) {
-                            return DropdownMenuItem<String>(
-                              value: reviewer,
-                              child: Text(reviewer),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              selectedReviewer = newValue;
-                            });
-                          },
+
+                      // Reviewer Selection
+                      _buildDropdown(
+                        label: 'Select Reviewer',
+                        value: null,
+                        items: reviewers,
+                        onChanged: (String? newValue) {},
+                        validator: (value) =>
+                            value == null ? 'Please select a reviewer' : null,
+                      ),
+
+                      // Funding & Resources Section
+                      _buildSectionHeader('💸 Funding & Resources'),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildTextField(
+                              controller: _budgetController,
+                              label: 'Estimated Budget',
+                              hint: 'Total funds required',
+                              prefixText: '\$ ',
+                              keyboardType: TextInputType.number,
+                              validator: (value) =>
+                                  value!.isEmpty ? 'Required field' : null,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: _buildDropdown(
+                              label: 'Fund Source',
+                              value: _fundSource,
+                              items: fundSourceOptions,
+                              onChanged: (value) {
+                                setState(() {
+                                  _fundSource = value;
+                                });
+                              },
+                              validator: (value) =>
+                                  value == null ? 'Required field' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Resources Requested',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-                    ),
-
-                    SizedBox(height: 20),
-
-                    // Notes Section
-                    Text(
-                      'Additional Notes (Optional)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
+                      SizedBox(height: 8),
+                      // Resources Checklist
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: resourceOptions.map((resource) {
+                          return FilterChip(
+                            label: Text(resource),
+                            selected: selectedResources.contains(resource),
+                            onSelected: (bool selected) {
+                              setState(() {
+                                if (selected) {
+                                  selectedResources.add(resource);
+                                } else {
+                                  selectedResources.remove(resource);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    TextField(
-                      controller: _notesController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: 'Add any additional notes or instructions...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.blue[600]!),
-                        ),
+                      SizedBox(height: 8),
+
+                      // Additional Notes
+                      _buildTextField(
+                        controller: _additionalNotesController,
+                        label: 'Additional Notes',
+                        hint: 'Any specific requirements or notes',
+                        maxLines: 3,
                       ),
-                    ),
 
-                    SizedBox(height: 24),
+                      // Declaration
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _agreedToTerms,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                _agreedToTerms = value ?? false;
+                              });
+                            },
+                          ),
+                          Expanded(
+                            child: Text(
+                              'I declare that the above information is accurate',
+                              style: TextStyle(fontStyle: FontStyle.italic),
+                            ),
+                          ),
+                        ],
+                      ),
 
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _submitDocument,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      // Submit Button
+                      SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _submitForm,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green[600],
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Submit for Review',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                        child: Text(
-                          'Submit for Review',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -372,10 +546,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         return Card(
                           margin: EdgeInsets.only(bottom: 8),
                           child: ListTile(
-                            leading: Icon(
-                              Icons.description,
-                              color: Colors.blue[600],
-                            ),
+                            leading: Icon(Icons.event, color: Colors.blue[600]),
                             title: Text(
                               submission['document'],
                               style: TextStyle(fontWeight: FontWeight.w600),
@@ -416,22 +587,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 32,
-            ),
+            Icon(icon, color: color, size: 32),
             SizedBox(height: 8),
             Text(
               value,
@@ -444,14 +614,114 @@ class _DashboardScreenState extends State<DashboardScreen> {
             SizedBox(height: 4),
             Text(
               title,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.blue[800],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    String? label,
+    String? hint,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+    String? prefixText,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          border: OutlineInputBorder(),
+          prefixText: prefixText,
+        ),
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        validator: validator,
+      ),
+    );
+  }
+
+  Widget _buildDatePickerField({
+    required String label,
+    required DateTime? selectedDate,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+          suffixIcon: Icon(Icons.calendar_today),
+        ),
+        child: Text(
+          selectedDate != null
+              ? DateFormat('MMM dd, yyyy').format(selectedDate)
+              : 'Select date',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimePickerField({
+    required String label,
+    required TimeOfDay? selectedTime,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+          suffixIcon: Icon(Icons.access_time),
+        ),
+        child: Text(
+          selectedTime != null ? selectedTime.format(context) : 'Select time',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required void Function(String?) onChanged,
+    String? Function(String?)? validator,
+  }) {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(),
+      ),
+      value: value,
+      items: items.map((String value) {
+        return DropdownMenuItem<String>(value: value, child: Text(value));
+      }).toList(),
+      onChanged: onChanged,
+      validator: validator,
     );
   }
 }
