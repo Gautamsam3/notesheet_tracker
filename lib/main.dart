@@ -6,10 +6,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-    url:
-        'https://mqxjdqnbdbmuhucmiomf.supabase.co', // Replace with your Supabase URL
+    url: 'https://mqxjdqnbdbmuhucmiomf.supabase.co',
     anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xeGpkcW5iZGJtdWh1Y21pb21mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIwMjIxNDYsImV4cCI6MjA2NzU5ODE0Nn0.gLr1K38Tm3HDLv16XGkrqlEjNcd-u_NnhCL687vr6zE', // Replace with your Supabase anon key
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xeGpkcW5iZGJtdWh1Y21pb21mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIwMjIxNDYsImV4cCI6MjA2NzU5ODE0Nn0.gLr1K38Tm3HDLv16XGkrqlEjNcd-u_NnhCL687vr6zE',
   );
 
   runApp(MyApp());
@@ -96,15 +95,81 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoading = true);
 
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
+      final response = await Supabase.instance.client.auth.signInWithPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      // If sign in successful, user will be redirected automatically
+      // by the AuthWrapper
     } on AuthException catch (error) {
       String errorMessage;
-      if (error.message.contains('email not confirmed')) {
-        errorMessage =
-            'Please check your email and click the confirmation link to verify your account.';
+      if (error.message.contains('email not confirmed') ||
+          error.message.contains('Email not confirmed')) {
+        // Show dialog with resend option
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Email Not Confirmed'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.email_outlined, size: 48, color: Colors.orange),
+                  SizedBox(height: 16),
+                  Text(
+                    'Please check your email and click the confirmation link to verify your account.',
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Email: ${_emailController.text.trim()}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('OK'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    try {
+                      await Supabase.instance.client.auth.resend(
+                        type: OtpType.signup,
+                        email: _emailController.text.trim(),
+                      );
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Confirmation email resent! Check your inbox.',
+                          ),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } catch (e) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to resend email'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                  child: Text('Resend Email'),
+                ),
+              ],
+            );
+          },
+        );
+        return;
       } else if (error.message.contains('Invalid login credentials')) {
         errorMessage = 'Invalid email or password. Please try again.';
       } else {
@@ -383,32 +448,71 @@ class _SignUpScreenState extends State<SignUpScreen>
       );
 
       if (response.user != null) {
-        // Check if email confirmation is required
-        if (response.user!.emailConfirmedAt == null) {
-          // Email confirmation required
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Please check your email and click the confirmation link before signing in.',
-              ),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 5),
-            ),
-          );
-          Navigator.pop(context);
-        } else {
-          // Email already confirmed or confirmation disabled
-          // Save additional user info to profiles table
+        // Save additional user info to profiles table
+        try {
           await Supabase.instance.client.from('profiles').insert({
             'id': response.user!.id,
             'name': _nameController.text.trim(),
             'email': _emailController.text.trim(),
             'created_at': DateTime.now().toIso8601String(),
           });
+        } catch (e) {
+          // Profile might already exist, ignore error
+          print('Profile creation error (might already exist): $e');
+        }
 
+        // Check if email confirmation is required
+        if (response.user!.emailConfirmedAt == null) {
+          // Email confirmation required
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: Text('Check Your Email'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.email, size: 48, color: Colors.blue),
+                    SizedBox(height: 16),
+                    Text(
+                      'We\'ve sent a confirmation email to:',
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      _emailController.text.trim(),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Please click the link in the email to verify your account before signing in.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.pop(context); // Go back to login
+                    },
+                    child: Text('OK'),
+                  ),
+                ],
+              );
+            },
+          );
+        } else {
+          // Email already confirmed
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Account created successfully!'),
+              content: Text(
+                'Account created successfully! You can now sign in.',
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -416,12 +520,10 @@ class _SignUpScreenState extends State<SignUpScreen>
         }
       }
     } on AuthException catch (error) {
-      String errorMessage;
-      if (error.message.contains('email not confirmed')) {
+      String errorMessage = error.message;
+      if (error.message.contains('already registered')) {
         errorMessage =
-            'Please check your email and click the confirmation link before signing in.';
-      } else {
-        errorMessage = error.message;
+            'This email is already registered. Please sign in instead.';
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -714,10 +816,17 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   String? selectedFileName;
-  String? selectedFilePath;
+  String?
+  selectedFilePath; // This path is local, not for Supabase Storage directly
   String? selectedReviewer;
   final TextEditingController _notesController = TextEditingController();
   String? userEmail;
+  bool isReviewer = false;
+  String?
+  currentReviewerName; // To store the full name of the logged-in reviewer
+
+  // In-memory storage for submissions (will be replaced by fetching from Supabase)
+  List<Map<String, dynamic>> submissions = [];
 
   final List<String> reviewers = [
     'John Smith - Senior Manager',
@@ -727,34 +836,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     'David Wilson - Technical Lead',
   ];
 
-  final List<Map<String, dynamic>> recentSubmissions = [
-    {
-      'document': 'Project_Proposal.pdf',
-      'reviewer': 'John Smith',
-      'status': 'Under Review',
-      'date': '2024-01-15',
-      'statusColor': Colors.orange,
-    },
-    {
-      'document': 'Budget_Report.xlsx',
-      'reviewer': 'Sarah Johnson',
-      'status': 'Approved',
-      'date': '2024-01-14',
-      'statusColor': Colors.green,
-    },
-    {
-      'document': 'Technical_Specs.docx',
-      'reviewer': 'Mike Davis',
-      'status': 'Needs Revision',
-      'date': '2024-01-13',
-      'statusColor': Colors.red,
-    },
+  final List<String> reviewerEmails = [
+    'johnsmith@gmail.com', // Use full email for matching
+    'sarahjohnson@gmail.com',
+    'mikedavis@gmail.com',
+    'emilybrown@gmail.com',
+    'davidwilson@gmail.com',
   ];
 
   @override
   void initState() {
     super.initState();
     _getCurrentUser();
+    _fetchSubmissions(); // Fetch submissions when the dashboard loads
   }
 
   void _getCurrentUser() {
@@ -762,6 +856,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (user != null) {
       setState(() {
         userEmail = user.email;
+        // Check if user is a reviewer and set their full name
+        int reviewerIndex = reviewerEmails.indexWhere(
+          (email) => userEmail!.toLowerCase() == email.toLowerCase(),
+        );
+
+        if (reviewerIndex != -1) {
+          isReviewer = true;
+          currentReviewerName = reviewers[reviewerIndex];
+        } else {
+          isReviewer = false;
+          currentReviewerName = null;
+        }
       });
     }
   }
@@ -784,7 +890,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  void _submitDocument() {
+  Future<void> _submitDocument() async {
     if (selectedFileName == null || selectedReviewer == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -795,25 +901,82 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    // Here you would typically send the data to your backend
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Success'),
-          content: Text('Document submitted successfully for review!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _resetForm();
-              },
-              child: Text('OK'),
-            ),
-          ],
+    try {
+      // Insert into Supabase 'documents' table
+      final response = await Supabase.instance.client.from('documents').insert({
+        'document_name': selectedFileName!,
+        'reviewer': selectedReviewer!,
+        'status': 'Under Review',
+        'submission_date': DateTime.now().toIso8601String().split('T')[0],
+        'submitter_email': userEmail!,
+        'notes': _notesController.text.trim(),
+        // If you were storing the actual file in Supabase Storage,
+        // you'd upload it here and save the storage path.
+        // For now, we're just saving metadata.
+      }).select(); // Use .select() to get the inserted data back
+
+      if (response != null && response.isNotEmpty) {
+        // Add the newly submitted document to the in-memory list and refresh
+        _fetchSubmissions();
+
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Success'),
+              content: Text('Document submitted successfully for review!'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _resetForm();
+                  },
+                  child: Text('OK'),
+                ),
+              ],
+            );
+          },
         );
-      },
-    );
+      } else {
+        throw Exception('Failed to insert document into Supabase.');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error submitting document: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _fetchSubmissions() async {
+    try {
+      final List<Map<String, dynamic>> data = await Supabase.instance.client
+          .from('documents')
+          .select('*');
+      setState(() {
+        submissions = data.map((item) {
+          return {
+            'id': item['id'].toString(),
+            'document': item['document_name'],
+            'reviewer': item['reviewer'],
+            'status': item['status'],
+            'date': item['submission_date'],
+            'statusColor': _getStatusColor(item['status']),
+            'submitter': item['submitter_email'],
+            'notes': item['notes'] ?? '',
+          };
+        }).toList();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error fetching submissions: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _resetForm() {
@@ -825,16 +988,107 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  Future<void> _updateDocumentStatus(
+    String documentId,
+    String newStatus,
+  ) async {
+    try {
+      await Supabase.instance.client
+          .from('documents')
+          .update({'status': newStatus})
+          .eq('id', documentId); // Assuming 'id' is the primary key
+
+      // After successful update in Supabase, refresh the local list
+      _fetchSubmissions();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Document status updated to: $newStatus'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating status: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Approved':
+        return Colors.green;
+      case 'Needs Revision':
+        return Colors.red;
+      case 'Under Review':
+      default:
+        return Colors.orange;
+    }
+  }
+
+  List<Map<String, dynamic>> _getFilteredSubmissions() {
+    if (isReviewer) {
+      // Filter for reviewers: show only documents assigned to the current reviewer
+      return submissions.where((sub) {
+        return sub['reviewer'] == currentReviewerName;
+      }).toList();
+    } else {
+      // Show only user's submissions for regular users
+      return submissions.where((sub) => sub['submitter'] == userEmail).toList();
+    }
+  }
+
+  int _getTotalSubmissions() {
+    final filteredSubmissions = _getFilteredSubmissions();
+    return filteredSubmissions.length;
+  }
+
+  int _getPendingReviews() {
+    final filteredSubmissions = _getFilteredSubmissions();
+    return filteredSubmissions
+        .where((sub) => sub['status'] == 'Under Review')
+        .length;
+  }
+
+  int _getApprovedSubmissions() {
+    final filteredSubmissions = _getFilteredSubmissions();
+    return filteredSubmissions
+        .where((sub) => sub['status'] == 'Approved')
+        .length;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('Document Review Dashboard'),
+        title: Text(
+          isReviewer ? 'Reviewer Dashboard' : 'Document Review Dashboard',
+        ),
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          if (isReviewer)
+            Container(
+              margin: EdgeInsets.only(right: 8),
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'REVIEWER',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'logout') {
@@ -882,7 +1136,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Expanded(
                   child: _buildStatCard(
                     'Total Submissions',
-                    '24',
+                    _getTotalSubmissions().toString(),
                     Icons.description,
                     Colors.blue,
                   ),
@@ -891,7 +1145,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Expanded(
                   child: _buildStatCard(
                     'Pending Reviews',
-                    '8',
+                    _getPendingReviews().toString(),
                     Icons.pending_actions,
                     Colors.orange,
                   ),
@@ -900,250 +1154,273 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Expanded(
                   child: _buildStatCard(
                     'Approved',
-                    '16',
+                    _getApprovedSubmissions().toString(),
                     Icons.check_circle,
                     Colors.green,
                   ),
                 ),
               ],
             ),
-
             SizedBox(height: 24),
 
-            // Submit New Document Section
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Submit New Document',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                    SizedBox(height: 20),
-
-                    // File Upload Section
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.grey[300]!,
-                          style: BorderStyle.solid,
-                          width: 2,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.cloud_upload,
-                            size: 48,
-                            color: Colors.blue[400],
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            selectedFileName ?? 'No file selected',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: selectedFileName != null
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: selectedFileName != null
-                                  ? Colors.green[600]
-                                  : Colors.grey[600],
-                            ),
-                          ),
-                          SizedBox(height: 12),
-                          ElevatedButton.icon(
-                            onPressed: _pickFile,
-                            icon: Icon(Icons.attach_file),
-                            label: Text('Choose File'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[600],
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    SizedBox(height: 20),
-
-                    // Reviewer Selection
-                    Text(
-                      'Select Reviewer',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: selectedReviewer,
-                          hint: Text('Choose a reviewer'),
-                          isExpanded: true,
-                          items: reviewers.map((String reviewer) {
-                            return DropdownMenuItem<String>(
-                              value: reviewer,
-                              child: Text(reviewer),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              selectedReviewer = newValue;
-                            });
-                          },
+            // Submit Document Section (only for non-reviewers)
+            if (!isReviewer) ...[
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Submit Document for Review',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
                         ),
                       ),
-                    ),
+                      SizedBox(height: 16),
 
-                    SizedBox(height: 20),
-
-                    // Notes Section
-                    Text(
-                      'Additional Notes (Optional)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    TextField(
-                      controller: _notesController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: 'Add any additional notes or instructions...',
-                        border: OutlineInputBorder(
+                      // File Selection
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.blue[600]!),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.cloud_upload,
+                              size: 48,
+                              color: Colors.grey[400],
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              selectedFileName ?? 'No file selected',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: selectedFileName != null
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            ElevatedButton.icon(
+                              onPressed: _pickFile,
+                              icon: Icon(Icons.attach_file),
+                              label: Text('Select Document'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue[600],
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
+                      SizedBox(height: 16),
 
-                    SizedBox(height: 24),
-
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _submitDocument,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
+                      // Reviewer Selection
+                      DropdownButtonFormField<String>(
+                        value: selectedReviewer,
+                        decoration: InputDecoration(
+                          labelText: 'Select Reviewer',
+                          border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: Text(
-                          'Submit for Review',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        items: reviewers.map((String reviewer) {
+                          return DropdownMenuItem<String>(
+                            value: reviewer,
+                            child: Text(reviewer),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedReviewer = newValue;
+                          });
+                        },
+                      ),
+                      SizedBox(height: 16),
+
+                      // Notes Field
+                      TextFormField(
+                        controller: _notesController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          labelText: 'Additional Notes (Optional)',
+                          hintText:
+                              'Add any additional context or requirements...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 16),
+
+                      // Submit Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _submitDocument,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green[600],
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Submit for Review',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+              SizedBox(height: 24),
+            ],
 
-            SizedBox(height: 24),
-
-            // Recent Submissions Section
+            // Submissions List
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
-                padding: EdgeInsets.all(20.0),
+                padding: EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Recent Submissions',
+                      isReviewer
+                          ? 'Your Assigned Documents'
+                          : 'Your Submissions', // Changed title
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.grey[800],
                       ),
                     ),
                     SizedBox(height: 16),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemCount: recentSubmissions.length,
-                      itemBuilder: (context, index) {
-                        final submission = recentSubmissions[index];
-                        return Card(
-                          margin: EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.description,
-                              color: Colors.blue[600],
+
+                    if (_getFilteredSubmissions().isEmpty)
+                      Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.inbox,
+                              size: 64,
+                              color: Colors.grey[400],
                             ),
-                            title: Text(
-                              submission['document'],
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            subtitle: Text(
-                              'Reviewer: ${submission['reviewer']}\nDate: ${submission['date']}',
-                            ),
-                            trailing: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
+                            SizedBox(height: 16),
+                            Text(
+                              isReviewer
+                                  ? 'No documents assigned to you yet' // Changed message
+                                  : 'No submissions yet',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
                               ),
-                              decoration: BoxDecoration(
-                                color: submission['statusColor'],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                submission['status'],
-                                style: TextStyle(
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        itemCount: _getFilteredSubmissions().length,
+                        itemBuilder: (context, index) {
+                          final submission = _getFilteredSubmissions()[index];
+                          return Card(
+                            margin: EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: submission['statusColor'],
+                                child: Icon(
+                                  _getStatusIcon(submission['status']),
                                   color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
+                              title: Text(
+                                submission['document'],
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Reviewer: ${submission['reviewer']}'),
+                                  Text('Date: ${submission['date']}'),
+                                  if (isReviewer)
+                                    Text(
+                                      'Submitter: ${submission['submitter']}',
+                                    ),
+                                  if (submission['notes'].isNotEmpty)
+                                    Text('Notes: ${submission['notes']}'),
+                                ],
+                              ),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: submission['statusColor'],
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      submission['status'],
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isReviewer &&
+                                      submission['status'] == 'Under Review')
+                                    PopupMenuButton<String>(
+                                      onSelected: (value) {
+                                        _updateDocumentStatus(
+                                          submission['id'],
+                                          value,
+                                        );
+                                      },
+                                      itemBuilder: (BuildContext context) {
+                                        return [
+                                          PopupMenuItem(
+                                            value: 'Approved',
+                                            child: Text('Approve'),
+                                          ),
+                                          PopupMenuItem(
+                                            value: 'Needs Revision',
+                                            child: Text('Needs Revision'),
+                                          ),
+                                        ];
+                                      },
+                                      child: Icon(Icons.more_vert),
+                                    ),
+                                ],
+                              ),
                             ),
-                            isThreeLine: true,
-                          ),
-                        );
-                      },
-                    ),
+                          );
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -1166,26 +1443,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color, size: 32),
+            Icon(icon, size: 32, color: color),
             SizedBox(height: 8),
             Text(
               value,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
+                color: color,
               ),
             ),
             SizedBox(height: 4),
             Text(
               title,
               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
     );
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'Approved':
+        return Icons.check_circle;
+      case 'Needs Revision':
+        return Icons.error;
+      case 'Under Review':
+      default:
+        return Icons.pending;
+    }
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
   }
 }
