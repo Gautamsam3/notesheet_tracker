@@ -1,475 +1,420 @@
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:notesheet_tracker/pages/hod.dart';
-import 'package:notesheet_tracker/pages/reviewer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
-  runApp(MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: 'https://fqdyhiejagolscwtmmly.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxZHloaWVqYWdvbHNjd3RtbWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4NTE1NDcsImV4cCI6MjA2ODQyNzU0N30.bX5LfrqC-Jogz1x8vJbmRfrCky_INWWlghbkZ9vgrZA',
+  );
+  runApp(const NotesheetTrackerApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class NotesheetTrackerApp extends StatelessWidget {
+  const NotesheetTrackerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Student Submission Page',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: DashboardScreen(),
       debugShowCheckedModeBanner: false,
-    );
-  }
-}
-
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
-
-  @override
-  _DashboardScreenState createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends State<DashboardScreen> {
-  String? selectedFileName;
-  String? selectedFilePath;
-  String? selectedReviewer;
-  final TextEditingController _notesController = TextEditingController();
-
-  final List<String> reviewers = [
-    'John Smith - Senior Manager',
-    'Sarah Johnson - Team Lead',
-    'Mike Davis - Project Manager',
-    'Emily Brown - Quality Assurance',
-    'David Wilson - Technical Lead',
-  ];
-
-  final List<Map<String, dynamic>> recentSubmissions = [
-    {
-      'document': 'Project_Proposal.pdf',
-      'reviewer': 'John Smith',
-      'status': 'Under Review',
-      'date': '2024-01-15',
-      'statusColor': Colors.orange,
-    },
-    {
-      'document': 'Budget_Report.xlsx',
-      'reviewer': 'Sarah Johnson',
-      'status': 'Approved',
-      'date': '2024-01-14',
-      'statusColor': Colors.green,
-    },
-    {
-      'document': 'Technical_Specs.docx',
-      'reviewer': 'Mike Davis',
-      'status': 'Needs Revision',
-      'date': '2024-01-13',
-      'statusColor': Colors.red,
-    },
-  ];
-
-  Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'xlsx', 'pptx'],
-    );
-
-    if (result != null) {
-      setState(() {
-        selectedFileName = result.files.single.name;
-        selectedFilePath = result.files.single.path;
-      });
-    }
-  }
-
-  void _submitDocument() {
-    if (selectedFileName == null || selectedReviewer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please select a document and reviewer'),
-          backgroundColor: Colors.red,
+      title: 'Notesheet Tracker',
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.indigo,
+        scaffoldBackgroundColor: const Color(0xFF1E1E2C),
+        inputDecorationTheme: const InputDecorationTheme(
+          filled: true,
+          fillColor: Color(0xFF2A2A40),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(15)),
+          ),
         ),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Success'),
-          content: Text('Document submitted successfully for review!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _resetForm();
-              },
-              child: Text('OK'),
-            ),
-          ],
-        );
-      },
+      ),
+      home: const AuthPage(),
     );
   }
+}
 
-  void _resetForm() {
+class AuthPage extends StatefulWidget {
+  const AuthPage({super.key});
+  @override
+  State<AuthPage> createState() => _AuthPageState();
+}
+
+class _AuthPageState extends State<AuthPage> {
+  bool isLogin = true;
+  bool agreeTerms = false;
+  bool obscurePassword = true;
+  String role = 'Student';
+  double passwordStrength = 0.0;
+
+  final _formKey = GlobalKey<FormState>();
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final supabase = Supabase.instance.client;
+
+  void toggleMode() {
     setState(() {
-      selectedFileName = null;
-      selectedFilePath = null;
-      selectedReviewer = null;
-      _notesController.clear();
+      isLogin = !isLogin;
+      agreeTerms = false;
+      passwordStrength = 0.0;
     });
   }
 
-  void _navigateTo(String page) {
-    if (page == 'HOD') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => HodDashboard()),
-      );
-    } else if (page == 'Reviewer') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => ReviewerPage()),
+  void checkPasswordStrength(String password) {
+    final hasUpper = password.contains(RegExp(r'[A-Z]'));
+    final hasLower = password.contains(RegExp(r'[a-z]'));
+    final hasDigit = password.contains(RegExp(r'[0-9]'));
+    final hasSpecial = password.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
+    final strength = [
+      hasUpper,
+      hasLower,
+      hasDigit,
+      hasSpecial,
+    ].where((e) => e).length;
+
+    setState(() {
+      passwordStrength = strength / 4;
+    });
+  }
+
+  Color getStrengthColor() {
+    if (passwordStrength < 0.34) return Colors.red;
+    if (passwordStrength < 0.67) return Colors.orange;
+    return Colors.green;
+  }
+
+  String getStrengthLabel() {
+    if (passwordStrength < 0.34) return 'Weak';
+    if (passwordStrength < 0.67) return 'Medium';
+    return 'Strong';
+  }
+
+  Future<void> registerUserToSupabase() async {
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    try {
+      final response = await supabase.from('users').insert({
+        'name': name,
+        'email': email,
+        'password': password,
+        'role': role,
+        'created_at': DateTime.now().toIso8601String(),
+      }).execute();
+
+      if (response.status == 201) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Success'),
+            content: const Text('You have registered successfully!'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    isLogin = true;
+                    nameController.clear();
+                    emailController.clear();
+                    passwordController.clear();
+                    passwordStrength = 0.0;
+                    agreeTerms = false;
+                  });
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        final errorString = response.toString().toLowerCase();
+        final isDuplicate = errorString.contains('duplicate key value');
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Error'),
+            content: Text(
+              isDuplicate
+                  ? 'This email is already registered.'
+                  : 'Registration failed. Please try again.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      final isDuplicate = e.toString().contains('duplicate key value');
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: Text(
+            isDuplicate
+                ? 'This email is already registered.'
+                : 'Unexpected error:\n${e.toString()}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
       );
     }
+  }
+
+  Future<void> loginUser() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    try {
+      final response = await supabase
+          .from('users')
+          .select()
+          .eq('email', email)
+          .maybeSingle();
+
+      if (response == null) {
+        showDialog(
+          context: context,
+          builder: (_) => const AlertDialog(
+            title: Text('Login Failed'),
+            content: Text('No such user found!'),
+          ),
+        );
+        return;
+      }
+
+      final dbPassword = response['password'];
+      final name = response['name'];
+      final userRole = response['role'];
+
+      if (password == dbPassword) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Login Successful'),
+            content: Text(
+              'Welcome $name,\nYou are a $userRole.\nHeading to $userRole Dashboard!',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (_) => const AlertDialog(
+            title: Text('Incorrect Password'),
+            content: Text('Wrong password, Try Again!'),
+          ),
+        );
+      }
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Error'),
+          content: Text('Unexpected error: ${e.toString()}'),
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text('Student Submission Page'),
-        backgroundColor: Colors.blue[600],
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: _navigateTo,
-            itemBuilder: (BuildContext context) => [
-              PopupMenuItem<String>(
-                value: 'HOD',
-                child: Text('HOD Review Page'),
-              ),
-              PopupMenuItem<String>(
-                value: 'Reviewer',
-                child: Text('Reviewer Review Page'),
-              ),
-            ],
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
               children: [
-                Expanded(
-                  child: _buildStatCard(
-                    'Total Submissions',
-                    '24',
-                    Icons.description,
-                    Colors.blue,
+                const Icon(
+                  Icons.note_alt_rounded,
+                  color: Colors.indigoAccent,
+                  size: 80,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Notesheet Tracker',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.indigoAccent,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatCard(
-                    'Pending Reviews',
-                    '8',
-                    Icons.pending_actions,
-                    Colors.orange,
+                const SizedBox(height: 24),
+                if (!isLogin) ...[
+                  TextFormField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Name',
+                      prefixIcon: Icon(Icons.person),
+                    ),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Enter your name' : null,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                TextFormField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Enter your email' : null,
+                ),
+                const SizedBox(height: 12),
+                if (!isLogin) ...[
+                  DropdownButtonFormField<String>(
+                    value: role,
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Student',
+                        child: Text('Student'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Reviewer',
+                        child: Text('Reviewer'),
+                      ),
+                      DropdownMenuItem(value: 'HOD', child: Text('HOD')),
+                    ],
+                    onChanged: (value) => setState(() => role = value!),
+                    decoration: const InputDecoration(
+                      labelText: 'Role',
+                      prefixIcon: Icon(Icons.badge),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () =>
+                          setState(() => obscurePassword = !obscurePassword),
+                    ),
+                  ),
+                  validator: (value) =>
+                      value!.length < 6 ? 'Password too short' : null,
+                  onChanged: (value) {
+                    if (!isLogin) checkPasswordStrength(value);
+                  },
+                ),
+                if (!isLogin) ...[
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: passwordStrength,
+                    backgroundColor: Colors.grey.shade700,
+                    color: getStrengthColor(),
+                    minHeight: 6,
+                  ),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Strength: ${getStrengthLabel()}',
+                      style: TextStyle(
+                        color: getStrengthColor(),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                if (!isLogin)
+                  CheckboxListTile(
+                    value: agreeTerms,
+                    onChanged: (val) => setState(() => agreeTerms = val!),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: const Text('I agree to the Terms & Conditions'),
+                  ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (_formKey.currentState!.validate()) {
+                        if (!isLogin && !agreeTerms) {
+                          showDialog(
+                            context: context,
+                            builder: (_) => const AlertDialog(
+                              title: Text('Terms Required'),
+                              content: Text('Please Agree to the Terms.'),
+                            ),
+                          );
+                          return;
+                        }
+
+                        if (!isLogin) {
+                          await registerUserToSupabase();
+                        } else {
+                          await loginUser();
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(isLogin ? 'Sign In' : 'Register'),
                   ),
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatCard(
-                    'Approved',
-                    '16',
-                    Icons.check_circle,
-                    Colors.green,
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: toggleMode,
+                  child: Text(
+                    isLogin
+                        ? "Don't have an account? Register"
+                        : "Already have an account? Sign In",
+                    style: const TextStyle(
+                      color: Colors.indigoAccent,
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 24),
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Submit New Document',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!, width: 2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.cloud_upload,
-                            size: 48,
-                            color: Colors.blue[400],
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            selectedFileName ?? 'No file selected',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: selectedFileName != null
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: selectedFileName != null
-                                  ? Colors.green[600]
-                                  : Colors.grey[600],
-                            ),
-                          ),
-                          SizedBox(height: 12),
-                          ElevatedButton.icon(
-                            onPressed: _pickFile,
-                            icon: Icon(Icons.attach_file),
-                            label: Text('Choose File'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[600],
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Text(
-                      'Select Reviewer',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: selectedReviewer,
-                          hint: Text('Choose a reviewer'),
-                          isExpanded: true,
-                          items: reviewers.map((String reviewer) {
-                            return DropdownMenuItem<String>(
-                              value: reviewer,
-                              child: Text(reviewer),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              selectedReviewer = newValue;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Text(
-                      'Additional Notes (Optional)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    TextField(
-                      controller: _notesController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: 'Add any additional notes or instructions...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.blue[600]!),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _submitDocument,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          'Submit for Review',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: 24),
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Recent Submissions',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemCount: recentSubmissions.length,
-                      itemBuilder: (context, index) {
-                        final submission = recentSubmissions[index];
-                        return Card(
-                          margin: EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.description,
-                              color: Colors.blue[600],
-                            ),
-                            title: Text(
-                              submission['document'],
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            subtitle: Text(
-                              'Reviewer: ${submission['reviewer']}\nDate: ${submission['date']}',
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: submission['statusColor'],
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    submission['status'],
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.download),
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Downloading ${submission['document']}',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                            isThreeLine: true,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 32),
-            SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              title,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
+          ),
         ),
       ),
     );
