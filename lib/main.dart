@@ -20,10 +20,58 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Document Review Dashboard',
+      title: 'Notesheet Tracker App', // Updated app title
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        // Define a custom input decoration theme for consistency
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.grey[50], // Light background for input fields
+          contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              8,
+            ), // Slightly less rounded corners
+            borderSide: BorderSide.none, // No border by default
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: Colors.grey[300]!,
+              width: 1,
+            ), // Subtle border
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: Colors.blue.shade600,
+              width: 2,
+            ), // Blue focus border
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.red.shade600, width: 1),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.red.shade600, width: 2),
+          ),
+          labelStyle: TextStyle(color: Colors.grey[700]),
+          hintStyle: TextStyle(color: Colors.grey[500]),
+          prefixIconColor: MaterialStateColor.resolveWith((states) {
+            if (states.contains(MaterialState.focused)) {
+              return Colors.blue.shade600; // Blue icon when focused
+            }
+            return Colors.grey[600]!; // Grey icon when not focused
+          }),
+          suffixIconColor: MaterialStateColor.resolveWith((states) {
+            if (states.contains(MaterialState.focused)) {
+              return Colors.blue.shade600; // Blue icon when focused
+            }
+            return Colors.grey[600]!; // Grey icon when not focused
+          }),
+        ),
       ),
       home: AuthWrapper(),
       debugShowCheckedModeBanner: false,
@@ -95,11 +143,11 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoading = true);
 
     try {
-      final response = await Supabase.instance.client.auth.signInWithPassword(
+      // ADD THIS LINE: Perform the actual sign-in with email and password
+      await Supabase.instance.client.auth.signInWithPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-
       // If sign in successful, user will be redirected automatically
       // by the AuthWrapper
     } on AuthException catch (error) {
@@ -123,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Email: ${_emailController.text.trim()}',
+                    _emailController.text.trim(),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.blue,
@@ -194,199 +242,281 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.blue.shade600,
-              Colors.blue.shade800,
-              Colors.indigo.shade900,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(32.0),
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: Card(
-                  elevation: 20,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Logo/Title
-                          Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.description,
-                              size: 48,
-                              color: Colors.blue.shade600,
-                            ),
-                          ),
-                          SizedBox(height: 24),
-                          Text(
-                            'Welcome Back',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[800],
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Sign in to your account',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          SizedBox(height: 32),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // Determine if it's a wide screen (e.g., tablet or desktop)
+          bool isWideScreen =
+              constraints.maxWidth > 700; // You can adjust this threshold
 
-                          // Email Field
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(Icons.email_outlined),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.blue.shade600,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your email';
-                              }
-                              if (!RegExp(
-                                r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-                              ).hasMatch(value)) {
-                                return 'Please enter a valid email';
-                              }
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 16),
-
-                          // Password Field
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: !_isPasswordVisible,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: Icon(Icons.lock_outline),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _isPasswordVisible
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                ),
-                                onPressed: () {
-                                  setState(
-                                    () => _isPasswordVisible =
-                                        !_isPasswordVisible,
-                                  );
-                                },
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.blue.shade600,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your password';
-                              }
-                              if (value.length < 6) {
-                                return 'Password must be at least 6 characters';
-                              }
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 24),
-
-                          // Sign In Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _signIn,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue.shade600,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 2,
-                              ),
-                              child: _isLoading
-                                  ? CircularProgressIndicator(
-                                      color: Colors.white,
-                                    )
-                                  : Text(
-                                      'Sign In',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+          return Container(
+            color: Theme.of(
+              context,
+            ).scaffoldBackgroundColor, // Use theme's background color
+            child: SafeArea(
+              child: isWideScreen
+                  ? Row(
+                      children: [
+                        // Left side: App Name and image
+                        Expanded(
+                          flex: 1, // Takes 1/3 of the width
+                          child: Container(
+                            color: Theme.of(
+                              context,
+                            ).primaryColor, // Primary blue color
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // Add your image here
+                                  // Example: Image.asset('assets/images/your_light_image.png', height: 100),
+                                  // Make sure the image asset is declared in pubspec.yaml and exists at the path.
+                                  // Example:
+                                  /*
+                                  Image.asset(
+                                    'assets/images/your_light_image.png', // Replace with your image path
+                                    height: 120, // Adjust height as needed
+                                    width: 120, // Adjust width as needed
+                                    fit: BoxFit.contain,
+                                  ),
+                                  SizedBox(height: 24), // Space between image and text
+                                  */
+                                  Text(
+                                    'Notesheet Tracker App', // App Name
+                                    style: TextStyle(
+                                      fontSize: 32, // Larger font size
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors
+                                          .white, // White text on blue background
                                     ),
-                            ),
-                          ),
-                          SizedBox(height: 16),
-
-                          // Sign Up Link
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => SignUpScreen(),
-                                ),
-                              );
-                            },
-                            child: Text(
-                              'Don\'t have an account? Sign up',
-                              style: TextStyle(
-                                color: Colors.blue.shade600,
-                                fontWeight: FontWeight.w600,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Streamline Your Document Workflow', // Tagline
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors
+                                          .white70, // Slightly transparent white
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        ],
+                        ),
+                        // Right side: Sign-in Form
+                        Expanded(
+                          flex: 2, // Takes 2/3 of the width
+                          child: Center(
+                            child: SingleChildScrollView(
+                              padding: EdgeInsets.all(32.0),
+                              child: FadeTransition(
+                                opacity: _fadeAnimation,
+                                child: Card(
+                                  elevation: 10,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Padding(
+                                    padding: EdgeInsets.all(32.0),
+                                    child: _buildLoginForm(
+                                      context,
+                                      isWideScreen,
+                                    ), // Pass isWideScreen
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Center(
+                      // Mobile portrait view (original single column)
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(32.0),
+                        child: FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: Card(
+                            elevation: 10,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.all(32.0),
+                              child: _buildLoginForm(
+                                context,
+                                isWideScreen,
+                              ), // Pass isWideScreen
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Extracted Login Form Widget
+  Widget _buildLoginForm(BuildContext context, bool isWideScreen) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Conditionally show app name/logo for non-wide screen
+          if (!isWideScreen) ...[
+            // Only show for non-wide screen
+            Text(
+              'Notesheet Tracker App', // App Name
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 32),
+          ],
+
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Log in',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+          ),
+          SizedBox(height: 24),
+
+          // User ID Field (matches image aesthetic)
+          TextFormField(
+            controller: _emailController,
+            keyboardType:
+                TextInputType.emailAddress, // Keep email for functionality
+            decoration: InputDecoration(
+              labelText: 'User ID', // Changed label
+              prefixIcon: Icon(Icons.person_outline), // Changed icon
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your User ID';
+              }
+              // Keeping email validation for actual Supabase login
+              if (!RegExp(
+                r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+              ).hasMatch(value)) {
+                return 'Please enter a valid email';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 16),
+
+          // Password Field
+          TextFormField(
+            controller: _passwordController,
+            obscureText: !_isPasswordVisible,
+            decoration: InputDecoration(
+              labelText: 'Password',
+              prefixIcon: Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                ),
+                onPressed: () {
+                  setState(() => _isPasswordVisible = !_isPasswordVisible);
+                },
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your password';
+              }
+              if (value.length < 6) {
+                return 'Password must be at least 6 characters';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 8),
+
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                // Implement forgot password logic
+              },
+              child: Text(
+                'Forgot your password?',
+                style: TextStyle(
+                  color: Theme.of(
+                    context,
+                  ).primaryColor, // Use primary color for links
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
           ),
-        ),
+          SizedBox(height: 16),
+
+          // Sign In Button
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _signIn,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(
+                  context,
+                ).primaryColor, // Use primary color
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(
+                    8,
+                  ), // Less rounded corners
+                ),
+                elevation: 5, // Increased elevation for button prominence
+              ),
+              child: _isLoading
+                  ? CircularProgressIndicator(color: Colors.white)
+                  : Text(
+                      'Login', // Changed to Login
+                      style: TextStyle(
+                        fontSize: 18, // Slightly larger font
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+          SizedBox(height: 16),
+
+          // Sign Up Link (kept for functionality, though not prominent in image)
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SignUpScreen()),
+              );
+            },
+            child: Text(
+              'Don\'t have an account? Sign up',
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).primaryColor, // Use primary color for links
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -544,264 +674,284 @@ class _SignUpScreenState extends State<SignUpScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [
-              Colors.purple.shade600,
-              Colors.purple.shade800,
-              Colors.indigo.shade900,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(32.0),
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: Offset(_slideAnimation.value, 0),
-                  end: Offset.zero,
-                ).animate(_animationController),
-                child: Card(
-                  elevation: 20,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Logo/Title
-                          Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.shade50,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.person_add,
-                              size: 48,
-                              color: Colors.purple.shade600,
-                            ),
-                          ),
-                          SizedBox(height: 24),
-                          Text(
-                            'Create Account',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[800],
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Join our document review platform',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          SizedBox(height: 32),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          bool isWideScreen = constraints.maxWidth > 700;
 
-                          // Name Field
-                          TextFormField(
-                            controller: _nameController,
-                            decoration: InputDecoration(
-                              labelText: 'Full Name',
-                              prefixIcon: Icon(Icons.person_outline),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.purple.shade600,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your full name';
-                              }
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 16),
-
-                          // Email Field
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(Icons.email_outlined),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.purple.shade600,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your email';
-                              }
-                              if (!RegExp(
-                                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                              ).hasMatch(value)) {
-                                return 'Please enter a valid email';
-                              }
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 16),
-
-                          // Password Field
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: !_isPasswordVisible,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: Icon(Icons.lock_outline),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _isPasswordVisible
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                ),
-                                onPressed: () {
-                                  setState(
-                                    () => _isPasswordVisible =
-                                        !_isPasswordVisible,
-                                  );
-                                },
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.purple.shade600,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter a password';
-                              }
-                              if (value.length < 6) {
-                                return 'Password must be at least 6 characters';
-                              }
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 16),
-
-                          // Confirm Password Field
-                          TextFormField(
-                            controller: _confirmPasswordController,
-                            obscureText: !_isConfirmPasswordVisible,
-                            decoration: InputDecoration(
-                              labelText: 'Confirm Password',
-                              prefixIcon: Icon(Icons.lock_outline),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _isConfirmPasswordVisible
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                ),
-                                onPressed: () {
-                                  setState(
-                                    () => _isConfirmPasswordVisible =
-                                        !_isConfirmPasswordVisible,
-                                  );
-                                },
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.purple.shade600,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please confirm your password';
-                              }
-                              if (value != _passwordController.text) {
-                                return 'Passwords do not match';
-                              }
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 24),
-
-                          // Sign Up Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _signUp,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.purple.shade600,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 2,
-                              ),
-                              child: _isLoading
-                                  ? CircularProgressIndicator(
+          return Container(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: SafeArea(
+              child: isWideScreen
+                  ? Row(
+                      children: [
+                        // Left side: App Name only (no logo)
+                        Expanded(
+                          flex: 1,
+                          child: Container(
+                            color: Theme.of(context).primaryColor,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Notesheet Tracker App',
+                                    style: TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
                                       color: Colors.white,
-                                    )
-                                  : Text(
-                                      'Sign Up',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
                                     ),
-                            ),
-                          ),
-                          SizedBox(height: 16),
-
-                          // Sign In Link
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text(
-                              'Already have an account? Sign in',
-                              style: TextStyle(
-                                color: Colors.purple.shade600,
-                                fontWeight: FontWeight.w600,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Organize Your Workflows', // Tagline for signup
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white70,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        ],
+                        ),
+                        // Right side: Sign-up Form
+                        Expanded(
+                          flex: 2,
+                          child: Center(
+                            child: SingleChildScrollView(
+                              padding: EdgeInsets.all(32.0),
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: Offset(_slideAnimation.value, 0),
+                                  end: Offset.zero,
+                                ).animate(_animationController),
+                                child: Card(
+                                  elevation: 10,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Padding(
+                                    padding: EdgeInsets.all(32.0),
+                                    child: _buildSignUpForm(
+                                      context,
+                                      isWideScreen,
+                                    ), // Extracted form
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Center(
+                      // Mobile portrait view
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(32.0),
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: Offset(_slideAnimation.value, 0),
+                            end: Offset.zero,
+                          ).animate(_animationController),
+                          child: Card(
+                            elevation: 10,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.all(32.0),
+                              child: _buildSignUpForm(
+                                context,
+                                isWideScreen,
+                              ), // Reusing form method
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Extracted Sign Up Form Widget
+  Widget _buildSignUpForm(BuildContext context, bool isWideScreen) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!isWideScreen) ...[
+            // Only show for non-wide screen
+            Text(
+              'Notesheet Tracker App',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 32),
+          ],
+
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Create Account',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
               ),
             ),
           ),
-        ),
+          SizedBox(height: 24),
+
+          // Name Field
+          TextFormField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              labelText: 'Full Name',
+              prefixIcon: Icon(Icons.person_outline),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your full name';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 16),
+
+          // Email Field
+          TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              labelText: 'Email',
+              prefixIcon: Icon(Icons.email_outlined),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your email';
+              }
+              if (!RegExp(
+                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+              ).hasMatch(value)) {
+                return 'Please enter a valid email';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 16),
+
+          // Password Field
+          TextFormField(
+            controller: _passwordController,
+            obscureText: !_isPasswordVisible,
+            decoration: InputDecoration(
+              labelText: 'Password',
+              prefixIcon: Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                ),
+                onPressed: () {
+                  setState(() => _isPasswordVisible = !_isPasswordVisible);
+                },
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a password';
+              }
+              if (value.length < 6) {
+                return 'Password must be at least 6 characters';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 16),
+
+          // Confirm Password Field
+          TextFormField(
+            controller: _confirmPasswordController,
+            obscureText: !_isConfirmPasswordVisible,
+            decoration: InputDecoration(
+              labelText: 'Confirm Password',
+              prefixIcon: Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isConfirmPasswordVisible
+                      ? Icons.visibility
+                      : Icons.visibility_off,
+                ),
+                onPressed: () {
+                  setState(
+                    () =>
+                        _isConfirmPasswordVisible = !_isConfirmPasswordVisible,
+                  );
+                },
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please confirm your password';
+              }
+              if (value != _passwordController.text) {
+                return 'Passwords do not match';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 24),
+
+          // Sign Up Button
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _signUp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(
+                  context,
+                ).primaryColor, // Consistent button color
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8), // Consistent rounding
+                ),
+                elevation: 5,
+              ),
+              child: _isLoading
+                  ? CircularProgressIndicator(color: Colors.white)
+                  : Text(
+                      'Sign Up',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+          SizedBox(height: 16),
+
+          // Sign In Link
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Already have an account? Sign in',
+              style: TextStyle(
+                color: Theme.of(context).primaryColor, // Consistent color
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -828,7 +978,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // In-memory storage for submissions (will be replaced by fetching from Supabase)
   List<Map<String, dynamic>> submissions = [];
 
-  final List<String> reviewers = [
+  final List<String> initialReviewers = [
     'John Smith - Senior Manager',
     'Sarah Johnson - Team Lead',
     'Mike Davis - Project Manager',
@@ -836,13 +986,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     'David Wilson - Technical Lead',
   ];
 
-  final List<String> reviewerEmails = [
-    'johnsmith@gmail.com', // Use full email for matching
+  final List<String> initialReviewerEmails = [
+    'johnsmith@gmail.com',
     'sarahjohnson@gmail.com',
     'mikedavis@gmail.com',
     'emilybrown@gmail.com',
     'davidwilson@gmail.com',
   ];
+
+  // Define HOD separately
+  final String hodName = 'Dr. Alex Lee - Head of Department';
+  final String hodEmail = 'hod@gmail.com';
 
   @override
   void initState() {
@@ -856,14 +1010,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (user != null) {
       setState(() {
         userEmail = user.email;
-        // Check if user is a reviewer and set their full name
-        int reviewerIndex = reviewerEmails.indexWhere(
+        // Check if user is an initial reviewer
+        int initialReviewerIndex = initialReviewerEmails.indexWhere(
           (email) => userEmail!.toLowerCase() == email.toLowerCase(),
         );
 
-        if (reviewerIndex != -1) {
+        if (initialReviewerIndex != -1) {
           isReviewer = true;
-          currentReviewerName = reviewers[reviewerIndex];
+          currentReviewerName = initialReviewers[initialReviewerIndex];
+        } else if (userEmail!.toLowerCase() == hodEmail.toLowerCase()) {
+          isReviewer = true; // HOD is also a reviewer
+          currentReviewerName = hodName;
         } else {
           isReviewer = false;
           currentReviewerName = null;
@@ -950,6 +1107,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _updateDocumentStatus(
+    String documentId,
+    String currentDocumentStatus,
+    String currentAssignedReviewer,
+    String newDecisionStatus,
+  ) async {
+    try {
+      String statusToUpdate;
+      String? nextAssignedReviewer;
+
+      final bool isCurrentUserHOD = currentReviewerName == hodName;
+      final bool isDocumentCurrentlyAssignedToHOD =
+          currentAssignedReviewer == hodName;
+
+      if (isCurrentUserHOD) {
+        // HOD is making the decision
+        if (currentDocumentStatus != 'Forwarded to HOD' ||
+            !isDocumentCurrentlyAssignedToHOD) {
+          throw Exception(
+            'HOD cannot update a document not assigned or forwarded to them.',
+          );
+        }
+        statusToUpdate = newDecisionStatus; // 'Approved' or 'Needs Revision'
+        nextAssignedReviewer = hodName; // Stays assigned to HOD as final point
+      } else {
+        // An initial reviewer is making the decision
+        if (currentDocumentStatus != 'Under Review' ||
+            currentAssignedReviewer != currentReviewerName) {
+          throw Exception(
+            'Not authorized to update this document or its not under your review.',
+          );
+        }
+
+        if (newDecisionStatus == 'Approved') {
+          // If approved by an initial reviewer, forward to HOD
+          statusToUpdate = 'Forwarded to HOD';
+          nextAssignedReviewer = hodName; // Assign to HOD
+        } else {
+          // newDecisionStatus == 'Needs Revision'
+          // If rejected by an initial reviewer, it's final
+          statusToUpdate = 'Needs Revision'; // Final status
+          nextAssignedReviewer =
+              currentReviewerName; // Stays assigned to current reviewer
+        }
+      }
+
+      await Supabase.instance.client
+          .from('documents')
+          .update({'status': statusToUpdate, 'reviewer': nextAssignedReviewer})
+          .eq('id', documentId);
+
+      _fetchSubmissions(); // Refresh the local list
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Document status updated to: $statusToUpdate'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating status: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _fetchSubmissions() async {
     try {
       final List<Map<String, dynamic>> data = await Supabase.instance.client
@@ -988,35 +1214,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  Future<void> _updateDocumentStatus(
-    String documentId,
-    String newStatus,
-  ) async {
-    try {
-      await Supabase.instance.client
-          .from('documents')
-          .update({'status': newStatus})
-          .eq('id', documentId); // Assuming 'id' is the primary key
-
-      // After successful update in Supabase, refresh the local list
-      _fetchSubmissions();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Document status updated to: $newStatus'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating status: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Approved':
@@ -1024,19 +1221,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 'Needs Revision':
         return Colors.red;
       case 'Under Review':
-      default:
         return Colors.orange;
+      case 'Forwarded to HOD':
+        return Colors.purple; // New color for HOD review pending
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'Approved':
+        return Icons.check_circle;
+      case 'Needs Revision':
+        return Icons.error;
+      case 'Under Review':
+        return Icons.pending;
+      case 'Forwarded to HOD':
+        return Icons.send; // Icon for forwarded
+      default:
+        return Icons.help_outline;
     }
   }
 
   List<Map<String, dynamic>> _getFilteredSubmissions() {
     if (isReviewer) {
-      // Filter for reviewers: show only documents assigned to the current reviewer
-      return submissions.where((sub) {
-        return sub['reviewer'] == currentReviewerName;
-      }).toList();
+      // Means the logged in user is either an initial reviewer or HOD
+      final bool isCurrentUserHOD = currentReviewerName == hodName;
+
+      if (isCurrentUserHOD) {
+        // HOD sees documents that are 'Forwarded to HOD' and assigned to them
+        return submissions.where((sub) {
+          return sub['reviewer'] == hodName &&
+              sub['status'] == 'Forwarded to HOD';
+        }).toList();
+      } else {
+        // Initial reviewers see documents 'Under Review' assigned to them
+        return submissions.where((sub) {
+          // Ensure it's not the HOD, but one of the other initial reviewers
+          return sub['reviewer'] == currentReviewerName &&
+              sub['status'] == 'Under Review';
+        }).toList();
+      }
     } else {
-      // Show only user's submissions for regular users
+      // Regular users (submitters) see all their submissions
       return submissions.where((sub) => sub['submitter'] == userEmail).toList();
     }
   }
@@ -1048,9 +1276,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   int _getPendingReviews() {
     final filteredSubmissions = _getFilteredSubmissions();
-    return filteredSubmissions
-        .where((sub) => sub['status'] == 'Under Review')
-        .length;
+    final bool isCurrentUserHOD = currentReviewerName == hodName;
+
+    if (isCurrentUserHOD) {
+      return filteredSubmissions
+          .where((sub) => sub['status'] == 'Forwarded to HOD')
+          .length;
+    } else if (isReviewer) {
+      return filteredSubmissions
+          .where((sub) => sub['status'] == 'Under Review')
+          .length;
+    } else {
+      // For regular users, pending means 'Under Review' or 'Forwarded to HOD'
+      return filteredSubmissions
+          .where(
+            (sub) =>
+                sub['status'] == 'Under Review' ||
+                sub['status'] == 'Forwarded to HOD',
+          )
+          .length;
+    }
   }
 
   int _getApprovedSubmissions() {
@@ -1062,13 +1307,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isCurrentUserHOD = currentReviewerName == hodName;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text(
-          isReviewer ? 'Reviewer Dashboard' : 'Document Review Dashboard',
+          isCurrentUserHOD
+              ? 'HOD Dashboard'
+              : (isReviewer
+                    ? 'Reviewer Dashboard'
+                    : 'Document Review Dashboard'),
         ),
-        backgroundColor: Colors.blue[600],
+        backgroundColor: Theme.of(
+          context,
+        ).primaryColor, // Use theme primary color
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -1081,7 +1334,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                'REVIEWER',
+                isCurrentUserHOD ? 'HOD' : 'REVIEWER',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -1144,7 +1397,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 SizedBox(width: 16),
                 Expanded(
                   child: _buildStatCard(
-                    'Pending Reviews',
+                    isCurrentUserHOD ? 'Pending HOD Review' : 'Pending Reviews',
                     _getPendingReviews().toString(),
                     Icons.pending_actions,
                     Colors.orange,
@@ -1216,7 +1469,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               icon: Icon(Icons.attach_file),
                               label: Text('Select Document'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue[600],
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).primaryColor, // Consistent color
                                 foregroundColor: Colors.white,
                               ),
                             ),
@@ -1234,7 +1489,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        items: reviewers.map((String reviewer) {
+                        items: initialReviewers.map((String reviewer) {
                           return DropdownMenuItem<String>(
                             value: reviewer,
                             child: Text(reviewer),
@@ -1304,9 +1559,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isReviewer
-                          ? 'Your Assigned Documents'
-                          : 'Your Submissions', // Changed title
+                      isCurrentUserHOD
+                          ? 'Documents for HOD Review'
+                          : (isReviewer
+                                ? 'Your Assigned Documents'
+                                : 'Your Submissions'),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1326,9 +1583,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             SizedBox(height: 16),
                             Text(
-                              isReviewer
-                                  ? 'No documents assigned to you yet' // Changed message
-                                  : 'No submissions yet',
+                              isCurrentUserHOD
+                                  ? 'No documents pending your review'
+                                  : (isReviewer
+                                        ? 'No documents assigned to you yet'
+                                        : 'No submissions yet'),
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey[600],
@@ -1392,26 +1651,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       ),
                                     ),
                                   ),
+                                  // Show actions only if it's the current reviewer's turn and status is actionable
                                   if (isReviewer &&
-                                      submission['status'] == 'Under Review')
+                                      ((currentReviewerName ==
+                                                  submission['reviewer'] &&
+                                              submission['status'] ==
+                                                  'Under Review') || // Initial reviewer's turn
+                                          (currentReviewerName == hodName &&
+                                              submission['reviewer'] ==
+                                                  hodName &&
+                                              submission['status'] ==
+                                                  'Forwarded to HOD'))) // HOD's turn
                                     PopupMenuButton<String>(
                                       onSelected: (value) {
                                         _updateDocumentStatus(
                                           submission['id'],
-                                          value,
+                                          submission['status'], // Pass current status
+                                          submission['reviewer'], // Pass current assigned reviewer
+                                          value, // Decision made
                                         );
                                       },
                                       itemBuilder: (BuildContext context) {
-                                        return [
-                                          PopupMenuItem(
-                                            value: 'Approved',
-                                            child: Text('Approve'),
-                                          ),
-                                          PopupMenuItem(
-                                            value: 'Needs Revision',
-                                            child: Text('Needs Revision'),
-                                          ),
-                                        ];
+                                        if (isCurrentUserHOD &&
+                                            submission['status'] ==
+                                                'Forwarded to HOD') {
+                                          return [
+                                            PopupMenuItem(
+                                              value: 'Approved',
+                                              child: Text('Final Approve'),
+                                            ),
+                                            PopupMenuItem(
+                                              value: 'Needs Revision',
+                                              child: Text('Final Reject'),
+                                            ),
+                                          ];
+                                        } else if (currentReviewerName ==
+                                                submission['reviewer'] &&
+                                            submission['status'] ==
+                                                'Under Review') {
+                                          return [
+                                            PopupMenuItem(
+                                              value: 'Approved',
+                                              child: Text(
+                                                'Approve (Forward to HOD)',
+                                              ),
+                                            ),
+                                            PopupMenuItem(
+                                              value: 'Needs Revision',
+                                              child: Text('Reject (Final)'),
+                                            ),
+                                          ];
+                                        }
+                                        return []; // No actions if not their turn or status is final
                                       },
                                       child: Icon(Icons.more_vert),
                                     ),
@@ -1464,18 +1755,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
-  }
-
-  IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'Approved':
-        return Icons.check_circle;
-      case 'Needs Revision':
-        return Icons.error;
-      case 'Under Review':
-      default:
-        return Icons.pending;
-    }
   }
 
   @override
