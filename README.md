@@ -113,17 +113,17 @@ Follow these instructions to set up and run the project locally.
 
 ## Test User Credentials
 
-Use the following pre-registered accounts to test the different roles. The password for all accounts is `123456`.
+Use the following pre-registered accounts to test the different roles.
 
-| Role                | Email Address        |
-| ------------------- | -------------------- |
-| **Submitter** | `ayu@gmail.com`      |
-| **Reviewer 1** | `rev1@gmail.com`     |
-| **Reviewer 2** | `rev2@gmail.com`     |
-| **Reviewer 3** | `rev3@gmail.com`     |
-| **Reviewer 4** | `rev4@gmail.com`     |
-| **Reviewer 5** | `rev5@gmail.com`     |
-| **Head of Dept.** | `hod@gmail.com`      |
+| Role                | Email Address        | Password |
+| ------------------- | -------------------- | -------- |
+| **Submitter** | `ayu@gmail.com`      | `123456` |
+| **Reviewer 1** | `rev1@gmail.com`     | `123456` |
+| **Reviewer 2** | `rev2@gmail.com`     | `123456` |
+| **Reviewer 3** | `rev3@gmail.com`     | `123456` |
+| **Reviewer 4** | `rev4@gmail.com`     | `123456` |
+| **Reviewer 5** | `rev5@gmail.com`     | `123456` |
+| **Head of Dept.** | `hod@gmail.com`      | `123456` |
 
 ---
 
