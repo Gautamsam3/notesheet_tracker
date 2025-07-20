@@ -448,23 +448,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           SizedBox(height: 8),
 
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {
-                // Implement forgot password logic
-              },
-              child: Text(
-                'Forgot your password?',
-                style: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).primaryColor, // Use primary color for links
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
+          Align(alignment: Alignment.centerRight),
           SizedBox(height: 16),
 
           // Sign In Button
