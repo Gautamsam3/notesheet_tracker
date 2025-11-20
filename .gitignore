@@ -43,3 +43,46 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Documentation files
+BUG_ANALYSIS.md
+DOCUMENTATION.md
+FIX_SUMMARY.md
+RUNNING.md
+
+# API keys and other secrets
+lib/firebase_options.dart
+app/google-services.json
+
+# Environment and configuration files
+.env*
+*.env*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Key store files
+*.jks
+*.keystore
+
+# Local properties
+android/local.properties
+android/gradle.properties
+
+# Firebase configuration
+firebase.json
+
+# Credentials and secrets
+*.credentials
+*.token
+*.secret
+key.json
+credentials.json
+
+# IDE files
+.vscode/settings.json
+*.swp
+*.swo
+
+# macOS files
+.DS_Store
